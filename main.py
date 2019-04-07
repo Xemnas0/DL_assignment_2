@@ -1,5 +1,5 @@
 from matplotlib import gridspec
-
+import numpy as np
 from utilities import readDataset, normalize
 from Model import Model
 import matplotlib.pyplot as plt
@@ -37,10 +37,22 @@ def plot_history(history, GDparams):
 
 
 if __name__ == '__main__':
+
     # Loading datasets
-    X_train, Y_train, y_train = readDataset('Datasets/cifar-10-batches-py/data_batch_1')
-    X_val, Y_val, y_val = readDataset('Datasets/cifar-10-batches-py/data_batch_2')
-    X_test, Y_test, y_test = readDataset('Datasets/cifar-10-batches-py/test_batch')
+    load_full_data = True
+    if load_full_data:
+        X_train, Y_train, y_train = readDataset('Datasets/cifar-10-batches-py/data_batch_1')
+        for i in range(2,6):
+            X, Y ,y = readDataset(f'Datasets/cifar-10-batches-py/data_batch_{i}')
+            X_train = np.hstack((X_train, X))
+            Y_train = np.hstack((Y_train, Y))
+            y_train = np.hstack((y_train, y))
+        X_test, Y_test, y_test = readDataset('Datasets/cifar-10-batches-py/test_batch')
+
+    else:
+        X_train, Y_train, y_train = readDataset('Datasets/cifar-10-batches-py/data_batch_1')
+        X_val, Y_val, y_val = readDataset('Datasets/cifar-10-batches-py/data_batch_2')
+        X_test, Y_test, y_test = readDataset('Datasets/cifar-10-batches-py/test_batch')
 
     # Data characteristics
     d, N = X_train.shape
@@ -51,18 +63,22 @@ if __name__ == '__main__':
                 'eta_min': 1e-5,
                 'eta_max': 1e-1,
                 'n_s': 800,
-                'n_epochs': 48,
+                'n_epochs': 10,
                 'lambda_L2': 0.0001}
 
     # Normalization of the dataset
     X_train, mean, std = normalize(X_train)
-    X_val = (X_val - mean) / std
+    if not load_full_data:
+        X_val = (X_val - mean) / std
     X_test = (X_test - mean) / std
 
     model = Model()
     model.compile(d, K, m=50)
 
-    history = model.fit((X_train, Y_train, y_train), GDparams, val_data=(X_val, Y_val, y_val))
+    if load_full_data:
+        history = model.fit((X_train, Y_train, y_train), GDparams, val_split=0.1)
+    else:
+        history = model.fit((X_train, Y_train, y_train), GDparams, val_data=(X_val, Y_val, y_val))
 
     history['test_loss'], history['test_acc'] = model.evaluate(X_test, y_test)
     print('Test loss: {0:.4f}\tTest acc: {1:.2f}%'.format(history['test_loss'], history['test_acc'] * 100))

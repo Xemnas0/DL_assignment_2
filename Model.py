@@ -105,8 +105,11 @@ class Model:
 
         return dL_dW1, dL_db1, dL_dW2, dL_db2
 
-    def fit(self, train_data, GDparams, val_data):
+    def fit(self, train_data, GDparams, val_data=None, val_split=None):
+        assert val_data is not None or val_split is not None, 'Validation set not defined.'
         self._saveGDparams(GDparams)
+        if val_data is None:
+            train_data, val_data = self.split_data(train_data, val_split)
 
         N = train_data[0].shape[1]
 
@@ -182,4 +185,21 @@ class Model:
         t = batches * epoch + b
         index = t % (self.n_s * 2)
         self.eta = self.scheduled_eta[index]
-        # self.eta = 0.01
+
+    def split_data(self, train_data, val_split):
+        self.shuffleData(train_data)
+        train_data_new = []
+        val_data = []
+
+        N = train_data[0].shape[1]
+        end_train = N - int(N * val_split)
+
+        train_data_new.append(train_data[0][:, :end_train])
+        train_data_new.append(train_data[1][:, :end_train])
+        train_data_new.append(train_data[2][:end_train])
+
+        val_data.append(train_data[0][:, end_train:])
+        val_data.append(train_data[1][:, end_train:])
+        val_data.append(train_data[2][end_train:])
+
+        return train_data_new, val_data
